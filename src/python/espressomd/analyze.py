@@ -492,7 +492,11 @@ class Analysis(ScriptInterfaceHelper):
 
         """
         observable = self.call_method("calculate_energy")
-        return self._generate_summary(observable, 1, False)
+        observable = self._generate_summary(observable, 1, False)
+        if has_features("DPD"):
+            # Remove meaningless (key, value)
+            del observable["dpd"]
+        return observable
 
     def particle_energy(self, particle):
         """
@@ -606,6 +610,20 @@ class Analysis(ScriptInterfaceHelper):
     def _generate_summary(self, obj, dim, calc_sp):
         """
         Compute derived quantities and reshape pressure tensors as 3x3 matrices.
+
+        Parameters
+        ----------
+        obj : dict
+            Dictionary containing the pressure tensor components.
+        dim : int
+            Dimensionality of the system. If dim is 1, the pressure tensor is not reshaped.
+        calc_sp : bool
+            Flag indicating whether to calculate scalar pressure.
+
+        Returns
+        -------
+        dict
+            Dictionary with computed derived quantities and reshaped pressure tensors.
         """
 
         def zero():
@@ -650,6 +668,17 @@ class Analysis(ScriptInterfaceHelper):
             reduction(out, "dipolar")
         if has_features("VIRTUAL_SITES"):
             reduction(out, "virtual_sites")
+        if has_features("DPD"):
+            dpd_stress = self.dpd_stress()
+            acc_dpd_stress = np.trace(dpd_stress) / 3
+            if dim == 1 or calc_sp:
+                out["dpd"] = float(acc_dpd_stress)
+                out["total"] = float(obj["total"] + acc_dpd_stress)
+            else:
+                out["dpd"] = dpd_stress
+                out["total"] = np.reshape(obj["total"], (3, 3)) + dpd_stress
+
+
 
         if dim == 1 or calc_sp:
             return out
