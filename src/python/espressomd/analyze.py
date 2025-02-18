@@ -678,8 +678,6 @@ class Analysis(ScriptInterfaceHelper):
                 out["dpd"] = dpd_stress
                 out["total"] = np.reshape(obj["total"], (3, 3)) + dpd_stress
 
-
-
         if dim == 1 or calc_sp:
             return out
         return {k: np.reshape(v, (3, 3)) for k, v in out.items()}
